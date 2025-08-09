@@ -13,3 +13,11 @@ class CustomUser(AbstractUser):
         choices=Role.choices,
         default=Role.USER,
     )
+
+class Team(models.Model):
+    title = models.CharField(max_length=100)
+    description = models.TextField(max_length=2000, null=True, blank=True)
+    members = models.ManyToManyField('CustomUser', related_name='teams', blank=True)
+
+    def __str__(self):
+        return self.title
