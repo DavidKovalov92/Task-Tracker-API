@@ -1,7 +1,7 @@
 FROM python:3.12
  
 RUN mkdir /app
- 
+
 WORKDIR /app
  
 ENV PYTHONDONTWRITEBYTECODE=1
