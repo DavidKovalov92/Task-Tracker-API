@@ -14,6 +14,15 @@ class Priority(models.TextChoices):
     MEDIUM = 'medium', 'Medium'
     HIGH = 'high', 'High'
 
+class NotificationType(models.TextChoices):
+    ASSIGN = 'assign', 'Assign'
+    UPDATED = 'updated', 'Updated'
+
+class NotificationStatus(models.TextChoices):
+    SENT = 'sent', 'Sent'
+    FAILED = 'failed', 'Failed'
+
+
 class Task(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=2000, null=True, blank=True)
@@ -64,3 +73,12 @@ class TaskChangeLog(models.Model):
     def __str__(self):
         return f"{self.task.title}: {self.field_changed} changed by {self.user} at {self.created_at}"
 
+class NotificationLog(models.Model):
+    task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='notification_logs')
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    type = models.CharField(max_length=20, choices=NotificationType.choices)
+    status = models.CharField(max_length=20, choices=NotificationStatus.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification {self.type} for {self.user} on {self.task.title} - {self.status}"
