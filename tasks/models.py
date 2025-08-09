@@ -51,3 +51,16 @@ class Task(models.Model):
 
     def __str__(self):
         return self.title
+    
+
+class TaskChangeLog(models.Model):
+    task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='change_logs')
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    field_changed = models.CharField(max_length=100)
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.task.title}: {self.field_changed} changed by {self.user} at {self.created_at}"
+
