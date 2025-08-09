@@ -1,0 +1,24 @@
+# Основне
+Django==5.0.3
+djangorestframework==3.15.1
+django-filter==24.2
+
+# База даних
+psycopg2-binary==2.9.9
+
+# Кешування і асинхронні задачі
+redis==5.0.4
+celery==5.3.6
+
+# Експорт у CSV / JSON (pandas для зручної роботи)
+pandas==2.2.2
+
+# Робота з env-файлами
+python-dotenv==1.0.1
+
+# Для email відправки (SMTP)
+django-anymail[mailgun]==10.3
+
+# Тести
+pytest==8.2.2
+pytest-django==4.8.0
