@@ -8,7 +8,7 @@ class Role(models.TextChoices):
     USER = 'developer', 'Developer'
 
 class CustomUser(AbstractUser):
-    role = models.TextChoices(
+    role = models.CharField(
         max_length=20,
         choices=Role.choices,
         default=Role.USER,
