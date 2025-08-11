@@ -23,5 +23,6 @@ class TaskSerializer(serializers.ModelSerializer):
             'is_active',
             'created_at',
             'updated_at',
+            'team',
         ]
         read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
