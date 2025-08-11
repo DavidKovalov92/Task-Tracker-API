@@ -2,8 +2,8 @@ from enum import member
 from celery import Task
 from rest_framework.viewsets import ModelViewSet
 from users.permissions import IsAdminOrManager, RoleHelper
-from .serializers import TeamSerializer, TaskSerializer
-from .models import Team, Task
+from .serializers import TeamSerializer, TaskSerializer, TaskChangeLogSerializer
+from .models import TaskChangeLog, Team, Task
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -102,8 +102,54 @@ class TaskViewSet(ModelViewSet):
 
 
     def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+        task = serializer.save(creator=self.request.user)
 
+        TaskChangeLog(
+            task=task,
+            user=self.request.user,
+            field_changed='created',
+            old_value='',
+            new_value=f'Task created with title "{task.title}"'
+        )
+
+    def perform_update(self, serializer):
+        task = self.get_object()
+
+        old_task_data = {
+            'title': task.title, 
+            'description': task.description,
+            'status': task.status,
+            'priority': task.priority,
+            'deadline': task.deadline.isoformat() if task.deadline else None,
+            'assignee': str(task.assignee) if task.assignee else None,
+            'team': str(task.team) if task.team else None,
+        }
+
+        updated_task = serializer.save()
+
+        for field, old_value in old_task_data.items():
+            new_value = getattr(updated_task, field)
+            if str(old_value) != str(new_value):
+                TaskChangeLog.objects.create(
+                    task=updated_task,
+                    user=self.request.user,
+                    field_changed=field,
+                    old_value=str(old_value),
+                    new_value=str(new_value)
+                )
+
+    def perform_destroy(self, instance):
+        TaskChangeLog.objects.create(
+                    task=instance,
+                    user=self.request.user,
+                    field_changed='deleted',
+                    old_value=f'Task "{instance.title}" is deleted',
+                    new_value=''
+                )
+        instance.delete()
+
+
+    
     @action(detail=True, methods=['POST'], url_path='assign')
     def assign_task(self, request, pk=None):
         task = self.get_object()
@@ -117,8 +163,20 @@ class TaskViewSet(ModelViewSet):
         except User.DoesNotExist:
             return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        old_assignee = task.assignee
         task.assignee = assignee
         task.save()
+
+        TaskChangeLog(
+            task=task,
+            user=request.user,
+            field_changed='assignee',
+            old_value=str(old_assignee) if old_assignee else '',
+            new_value=str(assignee)
+        )
+
+
+
         serializer = self.get_serializer(task)
         return Response(serializer.data)
     
@@ -130,11 +188,25 @@ class TaskViewSet(ModelViewSet):
         if not status:
             return Response({'status': 'status is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+        old_status = task.status
         task.status = status
         task.save()
+
+        TaskChangeLog(
+            task=task,
+            user=request.user,
+            field_changed='status',
+            old_value=old_status,
+            new_value=status,
+        )
+
         serializer = self.get_serializer(task)
         return Response(serializer.data)
     
     @action(detail=True, methods=['GET'], url_path='history')
     def history(self, request, pk=None):
-        
+        task = self.get_object()
+        change_logs = task.change_logs.all().order_by('-created_at')
+        serializer = TaskChangeLogSerializer(change_logs, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

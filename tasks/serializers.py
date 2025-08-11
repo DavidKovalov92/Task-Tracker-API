@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Team, Task
+from .models import Team, Task, TaskChangeLog
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -28,3 +28,18 @@ class TeamSerializer(serializers.ModelSerializer):
         model = Team
         fields = ['id', 'title', 'description', 'members', 'creator', 'tasks']
         read_only_fields = ['id']
+
+
+class TaskChangeLogSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+
+    class Meta:
+        model = TaskChangeLog
+        fields = [
+            'task',
+            'user',
+            'field_changed',
+            'old_value',
+            'new_value',
+            'created_at',
+        ]
