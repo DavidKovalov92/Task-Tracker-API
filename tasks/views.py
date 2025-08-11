@@ -44,3 +44,8 @@ class TeamViewSet(ModelViewSet):
         serializer.save(creator=self.request.user)
 
 
+
+class TaskViewSet(ModelViewSet):
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
