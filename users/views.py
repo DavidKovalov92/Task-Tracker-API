@@ -4,10 +4,11 @@ from rest_framework import status
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .serializer import UserRegistrationSerializer, LoginSerializer, UserSerializer
+from .serializers import UserRegistrationSerializer, LoginSerializer, UserSerializer
 from django.contrib.auth import login, logout
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
+from rest_framework.exceptions import PermissionDenied
 from .permissions import RoleHelper
 
 User = get_user_model()
@@ -56,5 +57,7 @@ class GetUserViewSet(ReadOnlyModelViewSet):
         elif RoleHelper.is_manager(user):
             return User.objects.filter(teams__members=user).distinct()
         else:
-            return User.objects.none()
+            raise PermissionDenied("you do not have sufficient privileges")
+        
+
 

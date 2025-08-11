@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
-from .models import Team
+from tasks.serializers import TeamSerializer
 
 User = get_user_model()
 
@@ -38,10 +38,6 @@ class LoginSerializer(serializers.Serializer):
         return data
     
 
-class TeamSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Team
-        fields = ['id', 'title']
 
 class UserSerializer(serializers.ModelSerializer):
     teams = TeamSerializer(many=True, read_only=True)

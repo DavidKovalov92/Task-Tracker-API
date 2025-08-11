@@ -1,8 +1,8 @@
 FROM python:3.12
  
-RUN mkdir /app
+RUN mkdir /project
 
-WORKDIR /app
+WORKDIR /project
  
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1 

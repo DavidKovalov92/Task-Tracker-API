@@ -25,3 +25,7 @@ class IsManager(BasePermission):
 class IsUser(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and RoleHelper.is_user(request.user)
+    
+class IsAdminOrManager(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in [Role.ADMIN, Role.MANAGER]
