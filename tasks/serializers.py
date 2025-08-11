@@ -1,12 +1,6 @@
 from rest_framework import serializers
 from .models import Team, Task
 
-class TeamSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Team
-        fields = ['id', 'title', 'description', 'members', 'creator']
-        read_only_fields = ['id']
-
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,3 +20,11 @@ class TaskSerializer(serializers.ModelSerializer):
             'team',
         ]
         read_only_fields = ['id', 'creator', 'created_at', 'updated_at']
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    tasks = TaskSerializer(many=True, read_only=True)
+    class Meta:
+        model = Team
+        fields = ['id', 'title', 'description', 'members', 'creator', 'tasks']
+        read_only_fields = ['id']

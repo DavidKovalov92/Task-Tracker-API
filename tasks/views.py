@@ -6,6 +6,7 @@ from .serializers import TeamSerializer, TaskSerializer
 from .models import Team, Task
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
@@ -103,4 +104,37 @@ class TaskViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
 
+    @action(detail=True, methods=['POST'], url_path='assign')
+    def assign_task(self, request, pk=None):
+        task = self.get_object()
+        assignee_id = request.data.get('assignee')
 
+        if not assignee_id:
+            return Response({'detail': 'assignee_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            assignee = User.objects.get(pk=assignee_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        task.assignee = assignee
+        task.save()
+        serializer = self.get_serializer(task)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['POST'], url_path='change-status')
+    def change_status(self, request, pk=None):
+        task = self.get_object()
+        status = request.data.get('status')
+
+        if not status:
+            return Response({'status': 'status is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        task.status = status
+        task.save()
+        serializer = self.get_serializer(task)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['GET'], url_path='history')
+    def history(self, request, pk=None):
+        
