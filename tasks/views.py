@@ -1,4 +1,3 @@
-from enum import member
 from celery import Task
 from rest_framework.viewsets import ModelViewSet
 from users.permissions import IsAdminOrManager, RoleHelper
@@ -11,12 +10,18 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 User = get_user_model()
+
 
 class TeamViewSet(ModelViewSet):
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated]
+
+    
+
 
     def get_queryset(self):
         user = self.request.user
@@ -52,6 +57,11 @@ class TeamViewSet(ModelViewSet):
 class TaskViewSet(ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'priority', 'creator', 'assignee', 'team']
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at', 'updated_at', 'deadline']
 
     def get_queryset(self):
         user = self.request.user 
