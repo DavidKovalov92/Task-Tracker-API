@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+from .filters import TaskFilter, TeamFilter
 
 User = get_user_model()
 
@@ -20,7 +21,10 @@ class TeamViewSet(ModelViewSet):
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated]
 
-    
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = TeamFilter
+    search_fields = ['title', 'description']
+    ordering_fields = ['created_at']
 
 
     def get_queryset(self):
@@ -59,9 +63,9 @@ class TaskViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'priority', 'creator', 'assignee', 'team']
+    filterset_class = TaskFilter
     search_fields = ['title', 'description']
-    ordering_fields = ['created_at', 'updated_at', 'deadline']
+    ordering_fields = ['created_at', 'updated_at', 'deadline', 'priority']
 
     def get_queryset(self):
         user = self.request.user 

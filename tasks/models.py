@@ -1,5 +1,5 @@
 from django.db import models
-from project import settings
+from users.models import CustomUser
 
 # Create your models here.
 class Status(models.TextChoices):
@@ -40,7 +40,7 @@ class Task(models.Model):
     )
     deadline = models.DateTimeField(null=True, blank=True)
     assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        CustomUser,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -48,7 +48,7 @@ class Task(models.Model):
     )
 
     creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        CustomUser,
         on_delete=models.CASCADE,
         related_name='tasks_created',
     )
@@ -71,9 +71,11 @@ class Task(models.Model):
 class Team(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=2000, null=True, blank=True)
-    members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='teams', blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    members = models.ManyToManyField(CustomUser, related_name='teams', blank=True)
     creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        CustomUser,
         on_delete=models.CASCADE,
         related_name='teams_created'
     )
@@ -83,7 +85,7 @@ class Team(models.Model):
 
 class TaskChangeLog(models.Model):
     task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='change_logs')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     field_changed = models.CharField(max_length=100)
     old_value = models.TextField(null=True, blank=True)
     new_value = models.TextField(null=True, blank=True)
@@ -94,7 +96,7 @@ class TaskChangeLog(models.Model):
 
 class NotificationLog(models.Model):
     task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='notification_logs')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
     type = models.CharField(max_length=20, choices=NotificationType.choices)
     status = models.CharField(max_length=20, choices=NotificationStatus.choices)
     created_at = models.DateTimeField(auto_now_add=True)

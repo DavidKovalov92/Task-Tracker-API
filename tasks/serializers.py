@@ -26,7 +26,7 @@ class TeamSerializer(serializers.ModelSerializer):
     tasks = TaskSerializer(many=True, read_only=True)
     class Meta:
         model = Team
-        fields = ['id', 'title', 'description', 'members', 'creator', 'tasks']
+        fields = ['id', 'title', 'description', 'created_at', 'is_active', 'members', 'creator', 'tasks']
         read_only_fields = ['id']
 
 
