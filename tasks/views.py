@@ -13,6 +13,8 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter, TeamFilter
+from .task import invalidate_task_cache
+from .cache import make_cache_key, cache_get, cache_set
 
 User = get_user_model()
 
@@ -25,6 +27,7 @@ class TeamViewSet(ModelViewSet):
     filterset_class = TeamFilter
     search_fields = ['title', 'description']
     ordering_fields = ['created_at']
+    
 
 
     def get_queryset(self):
@@ -66,6 +69,22 @@ class TaskViewSet(ModelViewSet):
     filterset_class = TaskFilter
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'deadline', 'priority']
+
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        base_key = "tasks:list"
+        query_params = request.query_params.dict()
+        cache_key = make_cache_key(user.id, base_key, query_params)
+        cached_data = cache_get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache_set(cache_key, response.data, ttl=120)
+        return response
+
 
     def get_queryset(self):
         user = self.request.user 
@@ -117,7 +136,7 @@ class TaskViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         task = serializer.save(creator=self.request.user)
-
+        invalidate_task_cache.delay(user_id=self.request.user.id)
         TaskChangeLog(
             task=task,
             user=self.request.user,
@@ -141,6 +160,8 @@ class TaskViewSet(ModelViewSet):
 
         updated_task = serializer.save()
 
+        invalidate_task_cache.delay(task_id=task.id, user_id=self.request.user.id)
+
         for field, old_value in old_task_data.items():
             new_value = getattr(updated_task, field)
             if str(old_value) != str(new_value):
@@ -152,7 +173,20 @@ class TaskViewSet(ModelViewSet):
                     new_value=str(new_value)
                 )
 
+    def retrieve(self, request, *args, **kwargs):
+        task_id = kwargs.get('id')
+        cache_key = f"tasks:detail:{task_id}"
+
+        cached_data = cache_get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+        response = super().retrieve(request, *args, **kwargs)
+        cache_set(cache_key, response.data, ttl=300)
+        return response
+    
+
     def perform_destroy(self, instance):
+        task_id = instance.id
         TaskChangeLog.objects.create(
                     task=instance,
                     user=self.request.user,
@@ -161,6 +195,7 @@ class TaskViewSet(ModelViewSet):
                     new_value=''
                 )
         instance.delete()
+        invalidate_task_cache.delay(task_id=task_id, user_id=self.request.user.id)
 
 
     
