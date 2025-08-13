@@ -14,8 +14,11 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter, TeamFilter
-from .task import invalidate_task_cache, send_email_task
+from .tasks import invalidate_task_cache, send_email_task, export_tasks_s3
 from .cache import make_cache_key, cache_get, cache_set
+from project import settings
+from celery.result import AsyncResult
+import boto3
 
 
 User = get_user_model()
@@ -276,3 +279,39 @@ class TaskViewSet(ModelViewSet):
         serializer = TaskChangeLogSerializer(change_logs, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['GET'], url_path='export')
+    def export(self, request):
+        export_format = request.query_params.get('format', 'csv').lower()
+        filters = {}
+
+        if 'status' in request.query_params:
+            filters['status'] = request.query_params.get('status')
+        if 'deadline__gte' in request.query_params:
+            filters['deadline__gte'] = request.query_params.get('deadline__gte')
+        if 'deadline__lte' in request.query_params:
+            filters['deadline__lte'] = request.query_params.get('deadline__lte')
+
+        task = export_tasks_s3.delay(request.user.id, export_format, filters)
+
+        return Response({
+            'task_id': task.id,
+            'status': 'started',
+            'message': 'Export started. Use /export-status?task_id=... to get download link.'
+        })
+
+
+    @action(detail=False, methods=['GET'], url_path='export-link')
+    def export_status(self, request):
+        task_id = request.query_params.get('task_id')
+        if not task_id:
+            return Response({"error": "task_id required"}, status=400)
+
+        res = AsyncResult(task_id)
+
+        if res.ready():
+            url = res.get()
+            url = url.replace("minio:9000", "127.0.0.1:9000")
+            return Response({"status": "done", "url": url})
+        else:
+            return Response({"status": "pending"})
