@@ -1,4 +1,3 @@
-from asyncio import QueueShutDown
 from celery import Task
 from rest_framework.viewsets import ModelViewSet
 from .email import generate_task_email
