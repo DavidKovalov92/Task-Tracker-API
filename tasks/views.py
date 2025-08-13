@@ -1,5 +1,6 @@
 from celery import Task
 from rest_framework.viewsets import ModelViewSet
+from .email import generate_task_email
 from users.permissions import IsAdminOrManager, RoleHelper
 from .serializers import TeamSerializer, TaskSerializer, TaskChangeLogSerializer
 from .models import TaskChangeLog, Team, Task
@@ -13,8 +14,9 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter, TeamFilter
-from .task import invalidate_task_cache
+from .task import invalidate_task_cache, send_email_task
 from .cache import make_cache_key, cache_get, cache_set
+
 
 User = get_user_model()
 
@@ -224,7 +226,9 @@ class TaskViewSet(ModelViewSet):
             new_value=str(assignee)
         )
 
-
+        if assignee.email:
+            html_body = generate_task_email(task, request.user)
+            send_email_task.delay(assignee.email, html_body)
 
         serializer = self.get_serializer(task)
         return Response(serializer.data)
