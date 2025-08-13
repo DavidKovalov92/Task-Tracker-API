@@ -31,3 +31,30 @@ def send_email_task(to_email, html_content):
         print(response.headers)
     except Exception as e:
         print(e)
+
+
+@shared_task
+def send_deadline_reminder(assignee_email, task_title, deadline):
+    subject = f"Reminder: Task '{task_title}' is approaching!"
+    html_content = f"""
+        <p>Hi!</p>
+        <p>This is a reminder that your task <b>{task_title}</b> is due on <b>{deadline}</b>.</p>
+        <p>Don't forget to complete it on time!</p>
+    """
+
+    message = Mail(
+        from_email=DEFAULT_FROM_EMAIL,
+        to_emails=assignee_email,
+        subject=subject,
+        html_content=html_content
+    )
+
+    try:
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        sg.send(message)
+    except Exception as e:
+        print(f"Email error: {e}")
+
+
+
+

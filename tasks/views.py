@@ -138,6 +138,7 @@ class TaskViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         task = serializer.save(creator=self.request.user)
+        assignee = self.request.get("assignee")
         invalidate_task_cache.delay(user_id=self.request.user.id)
         TaskChangeLog(
             task=task,
@@ -146,6 +147,10 @@ class TaskViewSet(ModelViewSet):
             old_value='',
             new_value=f'Task created with title "{task.title}"'
         )
+
+        if assignee.email:
+            html_body = generate_task_email(task, self.request.user)
+            send_email_task.delay(assignee.email, html_body)
 
     def perform_update(self, serializer):
         task = self.get_object()
