@@ -3,10 +3,11 @@ from rest_framework.viewsets import ModelViewSet
 from .email import generate_task_email
 from users.permissions import IsAdminOrManager, RoleHelper
 from .serializers import TeamSerializer, TaskSerializer, TaskChangeLogSerializer
-from .models import TaskChangeLog, Team, Task
+from .models import Team, Task
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from .helpers import task_change_log, log_notification
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
@@ -16,9 +17,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from .filters import TaskFilter, TeamFilter
 from .tasks import invalidate_task_cache, send_email_task, export_tasks_s3
 from .cache import make_cache_key, cache_get, cache_set
-from project import settings
 from celery.result import AsyncResult
-import boto3
 
 
 User = get_user_model()
@@ -151,17 +150,14 @@ class TaskViewSet(ModelViewSet):
                 assignee = None
 
         invalidate_task_cache.delay(user_id=self.request.user.id)
-        TaskChangeLog.objects.create(
-            task=task,
-            user=self.request.user,
-            field_changed='created',
-            old_value='',
-            new_value=f'Task created with title "{task.title}"'
-        )
+
+        task_change_log(task, self.request.user, 'created', '', f'Task created with title "{task.title}"')
 
         if assignee and assignee.email:
             html_body = generate_task_email(task, self.request.user)
             send_email_task.delay(assignee.email, html_body)
+
+        log_notification(task, assignee)
 
     def perform_update(self, serializer):
         task = self.get_object()
@@ -183,13 +179,7 @@ class TaskViewSet(ModelViewSet):
         for field, old_value in old_task_data.items():
             new_value = getattr(updated_task, field)
             if str(old_value) != str(new_value):
-                TaskChangeLog.objects.create(
-                    task=updated_task,
-                    user=self.request.user,
-                    field_changed=field,
-                    old_value=str(old_value),
-                    new_value=str(new_value)
-                )
+                task_change_log(updated_task, self.request.user, field, str(old_value), str(new_value))
 
     def retrieve(self, request, *args, **kwargs):
         task_id = kwargs.get('id')
@@ -205,13 +195,8 @@ class TaskViewSet(ModelViewSet):
 
     def perform_destroy(self, instance):
         task_id = instance.id
-        TaskChangeLog.objects.create(
-                    task=instance,
-                    user=self.request.user,
-                    field_changed='deleted',
-                    old_value=f'Task "{instance.title}" is deleted',
-                    new_value=''
-                )
+
+        task_change_log(instance, self.request.user, 'deleted', f'Task "{instance.title}" is deleted', '')
         instance.delete()
         invalidate_task_cache.delay(task_id=task_id, user_id=self.request.user.id)
 
@@ -234,17 +219,15 @@ class TaskViewSet(ModelViewSet):
         task.assignee = assignee
         task.save()
 
-        TaskChangeLog(
-            task=task,
-            user=request.user,
-            field_changed='assignee',
-            old_value=str(old_assignee) if old_assignee else '',
-            new_value=str(assignee)
-        )
+        task_change_log(task, request.user, 'assignee', str(old_assignee) if old_assignee else '', str(assignee))
 
         if assignee.email:
             html_body = generate_task_email(task, request.user)
             send_email_task.delay(assignee.email, html_body)
+
+
+        log_notification(task, assignee)
+
 
         serializer = self.get_serializer(task)
         return Response(serializer.data)
@@ -261,13 +244,7 @@ class TaskViewSet(ModelViewSet):
         task.status = status
         task.save()
 
-        TaskChangeLog(
-            task=task,
-            user=request.user,
-            field_changed='status',
-            old_value=old_status,
-            new_value=status,
-        )
+        task_change_log(task, request.user, 'status', old_status, status)
 
         serializer = self.get_serializer(task)
         return Response(serializer.data)
