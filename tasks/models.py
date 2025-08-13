@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import CustomUser
+from django.contrib.postgres.fields import ArrayField
 
 # Create your models here.
 class Status(models.TextChoices):
@@ -64,6 +65,15 @@ class Task(models.Model):
         null=True,
         blank=True,
     )
+    reminders_sent = ArrayField(models.DurationField(), default=list, blank=True)
+
+
+    def reminder_sent(self, delta):
+        return delta in self.reminders_sent
+
+    def mark_reminder_sent(self, delta):
+        self.reminders_sent.append(delta)
+        self.save(update_fields=['reminders_sent'])
 
     def __str__(self):
         return self.title

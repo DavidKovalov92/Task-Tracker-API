@@ -138,9 +138,17 @@ class TaskViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         task = serializer.save(creator=self.request.user)
-        assignee = self.request.get("assignee")
+        
+        assignee_id = self.request.data.get("assignee")
+        assignee = None
+        if assignee_id:
+            try:
+                assignee = User.objects.get(pk=assignee_id)
+            except User.DoesNotExist:
+                assignee = None
+
         invalidate_task_cache.delay(user_id=self.request.user.id)
-        TaskChangeLog(
+        TaskChangeLog.objects.create(
             task=task,
             user=self.request.user,
             field_changed='created',
@@ -148,7 +156,7 @@ class TaskViewSet(ModelViewSet):
             new_value=f'Task created with title "{task.title}"'
         )
 
-        if assignee.email:
+        if assignee and assignee.email:
             html_body = generate_task_email(task, self.request.user)
             send_email_task.delay(assignee.email, html_body)
 

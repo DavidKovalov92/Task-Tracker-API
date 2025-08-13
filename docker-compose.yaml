@@ -11,7 +11,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
-      # - redis
+      - redis
     env_file:
       - .env
     volumes:
@@ -51,13 +51,14 @@ services:
   celery_beat:
     build: .
     container_name: celery_beat
-    command: celery -A project beat -l info
+    command: celery -A project beat -l info -S django
     volumes:
       - .:/project
     depends_on:
       - django
       - redis
-
+    env_file:
+      - .env
 
 volumes:
   postgres_data:

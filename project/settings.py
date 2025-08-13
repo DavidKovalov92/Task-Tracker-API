@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'users',
     'rest_framework',
     'django_extensions',
+    'django_celery_beat',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -132,6 +133,7 @@ CACHES = {
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 EMAIL_BACKEND = config("EMAIL_BACKEND")
