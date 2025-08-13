@@ -73,11 +73,21 @@ def send_deadline_reminders():
 
 @shared_task(ignore_result=False)
 def export_tasks_s3(user_id, export_format='csv', filters=None):
-    qs = Task.objects.filter(
-        Q(assignee_id=user_id) |
-        Q(creator_id=user_id) |
-        Q(team__members=user_id)
+    qs = (
+        Task.objects
+        .filter(
+            Q(assignee_id=user_id) |
+            Q(creator_id=user_id) |
+            Q(team__members=user_id)
+        )
+        .select_related('assignee', 'creator')  
+        .prefetch_related('team')
+        .only('id', 'title', 'description', 'deadline', 'status',
+              'assignee__id', 'assignee__username',
+              'creator__id', 'creator__username')
+        .distinct()
     )
+
 
     if filters:
         qs = qs.filter(**filters)

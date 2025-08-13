@@ -78,6 +78,16 @@ class Task(models.Model):
     def __str__(self):
         return self.title
     
+    class Meta:
+        indexes = [
+            models.Index(fields=['assignee']),
+            models.Index(fields=['status']),
+            models.Index(fields=['deadline']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['team', 'status']),
+        ]
+
+    
 class Team(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=2000, null=True, blank=True)
@@ -92,6 +102,14 @@ class Team(models.Model):
 
     def __str__(self):
         return self.title
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['title']),      
+            models.Index(fields=['is_active']),  
+            models.Index(fields=['creator']),   
+        ]
+
 
 class TaskChangeLog(models.Model):
     task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='change_logs')
@@ -104,6 +122,13 @@ class TaskChangeLog(models.Model):
     def __str__(self):
         return f"{self.task.title}: {self.field_changed} changed by {self.user} at {self.created_at}"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['task']),        
+            models.Index(fields=['user']),       
+            models.Index(fields=['created_at']),  
+        ]
+
 class NotificationLog(models.Model):
     task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='notification_logs')
     user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
@@ -113,3 +138,12 @@ class NotificationLog(models.Model):
 
     def __str__(self):
         return f"Notification {self.type} for {self.user} on {self.task.title} - {self.status}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['task']),
+            models.Index(fields=['user']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['user', 'status']),
+        ]

@@ -1,3 +1,4 @@
+from asyncio import QueueShutDown
 from celery import Task
 from rest_framework.viewsets import ModelViewSet
 from .email import generate_task_email
@@ -37,12 +38,14 @@ class TeamViewSet(ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
+        qs = Team.objects.select_related('creator').prefetch_related('members')
+
         if RoleHelper.is_admin(user):
-            return Team.objects.all()
+            return qs
         elif RoleHelper.is_manager(user):
-            return Team.objects.filter(creator=user)
+            return qs.filter(creator=user)
         else:
-            return Team.objects.filter(members=user)
+            return qs.filter(members=user)
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -93,8 +96,11 @@ class TaskViewSet(ModelViewSet):
     def get_queryset(self):
         user = self.request.user 
 
+        qs = Task.objects.select_related('creator', 'assignee', 'team__creator') \
+                     .prefetch_related('team__members')
+
         if RoleHelper.is_admin(user):
-            return Task.objects.all()
+            return qs
 
         teams_where_creator = Team.objects.filter(creator=user)
         teams_where_member = Team.objects.filter(members=user)
@@ -102,14 +108,14 @@ class TaskViewSet(ModelViewSet):
 
         members_ids = all_teams.values_list('members__id', flat=True)
         if RoleHelper.is_manager(user):
-            return Task.objects.filter(
+            return qs.filter(
                 Q(creator=user) |                  
                 Q(assignee=user) |                 
                 Q(assignee__id__in=members_ids) 
             ).distinct()
 
         else:  
-            return Task.objects.filter(
+            return qs.filter(
                 Q(creator=user) |
                 Q(assignee=user) |
                 Q(assignee__id__in=members_ids)
