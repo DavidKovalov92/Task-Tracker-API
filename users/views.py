@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from rest_framework.exceptions import PermissionDenied
 from .permissions import RoleHelper
+from .throttling import UsersThrottle, LoginThrottle
 
 User = get_user_model()
 
@@ -26,6 +27,7 @@ class RegistrationAPIView(APIView):
     
 
 class LoginAPIView(APIView):
+    throttle_classes = [LoginThrottle]
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
@@ -49,6 +51,7 @@ class GetUserViewSet(ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UsersThrottle]
 
     def get_queryset(self):
         user = self.request.user

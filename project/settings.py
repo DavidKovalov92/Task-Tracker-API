@@ -112,9 +112,22 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_FILTER_BACKENDS': (
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
-    ),
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',   
+        'rest_framework.throttling.AnonRateThrottle', 
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '1000/day',    
+        'anon': '100/day',      
+        'login': '5/minute',   
+    }
 }
 
 REDIS_SERVER = config("REDIS_SERVER")

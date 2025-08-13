@@ -18,6 +18,7 @@ from .filters import TaskFilter, TeamFilter
 from .tasks import invalidate_task_cache, send_email_task, export_tasks_s3
 from .cache import make_cache_key, cache_get, cache_set
 from celery.result import AsyncResult
+from users.throttling import UserRateThrottle
 
 
 User = get_user_model()
@@ -26,6 +27,7 @@ User = get_user_model()
 class TeamViewSet(ModelViewSet):
     serializer_class = TeamSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TeamFilter
@@ -37,7 +39,7 @@ class TeamViewSet(ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        qs = Team.objects.select_related('creator').prefetch_related('members')
+        qs = Team.objects.select_related('creator').prefetch_related('members').order_by('-created_at')
 
         if RoleHelper.is_admin(user):
             return qs
@@ -70,6 +72,7 @@ class TeamViewSet(ModelViewSet):
 class TaskViewSet(ModelViewSet):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskFilter
@@ -95,29 +98,25 @@ class TaskViewSet(ModelViewSet):
     def get_queryset(self):
         user = self.request.user 
 
-        qs = Task.objects.select_related('creator', 'assignee', 'team__creator') \
-                     .prefetch_related('team__members')
+        qs = Task.objects.select_related(
+            'creator',
+            'assignee',
+            'team',
+            'team__creator'
+        ).prefetch_related(
+            'team__members'
+        ).order_by('-created_at')  
 
         if RoleHelper.is_admin(user):
             return qs
 
-        teams_where_creator = Team.objects.filter(creator=user)
-        teams_where_member = Team.objects.filter(members=user)
-        all_teams = teams_where_creator | teams_where_member
+        teams = Team.objects.filter(creator=user) | Team.objects.filter(members=user)
+        members_ids = teams.values_list('members__id', flat=True)
 
-        members_ids = all_teams.values_list('members__id', flat=True)
-        if RoleHelper.is_manager(user):
-            return qs.filter(
+        return qs.filter(
                 Q(creator=user) |                  
                 Q(assignee=user) |                 
                 Q(assignee__id__in=members_ids) 
-            ).distinct()
-
-        else:  
-            return qs.filter(
-                Q(creator=user) |
-                Q(assignee=user) |
-                Q(assignee__id__in=members_ids)
             ).distinct()
         
     def get_permissions(self):
