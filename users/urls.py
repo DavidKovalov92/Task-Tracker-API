@@ -1,11 +1,8 @@
 from django.urls import path
-from .views import RegistrationAPIView, LoginAPIView, LogoutAPIView, csrf, GetUserViewSet
-from rest_framework.routers import DefaultRouter
+from .views import RegistrationAPIView, LoginAPIView, LogoutAPIView, csrf
 
-router = DefaultRouter()
-router.register(r'users', GetUserViewSet, basename='user')
 
-urlpatterns = router.urls + [
+urlpatterns = [
     path('auth/register/', RegistrationAPIView.as_view(), name='register'),
     path('auth/login/', LoginAPIView.as_view(), name='login'),
     path('auth/logout/', LogoutAPIView.as_view(), name='logout'),

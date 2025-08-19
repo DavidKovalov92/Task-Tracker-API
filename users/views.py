@@ -1,16 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.viewsets import ReadOnlyModelViewSet
-from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .serializers import UserRegistrationSerializer, LoginSerializer, UserSerializer
+from .serializers import UserRegistrationSerializer, LoginSerializer
 from django.contrib.auth import login, logout
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from rest_framework.exceptions import PermissionDenied
-from .permissions import RoleHelper
-from .throttling import UsersThrottle, LoginThrottle
+from .throttling import LoginThrottle
 
 User = get_user_model()
 
@@ -47,20 +43,3 @@ def csrf(request):
     return JsonResponse({'csrfToken': get_token(request)})
 
  
-class GetUserViewSet(ReadOnlyModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [UsersThrottle]
-
-    def get_queryset(self):
-        user = self.request.user
-        if RoleHelper.is_admin(user):
-            return User.objects.all()
-        elif RoleHelper.is_manager(user):
-            return User.objects.filter(teams__members=user).distinct()
-        else:
-            raise PermissionDenied("you do not have sufficient privileges")
-        
-
-

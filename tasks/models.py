@@ -1,8 +1,19 @@
 from django.db import models
 from users.models import CustomUser
 from django.contrib.postgres.fields import ArrayField
-
+import sys
+from django.db.models import JSONField
 # Create your models here.
+
+if 'test' in sys.argv:
+    ReminderField = JSONField
+else:
+    ReminderField = lambda **kwargs: ArrayField(models.DurationField(), **kwargs)
+
+def default_reminders():
+    return []
+
+
 class Status(models.TextChoices):
     TODO = 'todo', 'ToDo'
     IN_PROGRESS = 'in_progress', 'In Progress'
@@ -22,6 +33,8 @@ class NotificationType(models.TextChoices):
 class NotificationStatus(models.TextChoices):
     SENT = 'sent', 'Sent'
     FAILED = 'failed', 'Failed'
+
+
 
 
 class Task(models.Model):
@@ -65,7 +78,10 @@ class Task(models.Model):
         null=True,
         blank=True,
     )
-    reminders_sent = ArrayField(models.DurationField(), default=list, blank=True)
+    reminders_sent = ReminderField(
+        default=default_reminders, 
+        blank=True
+    )
 
 
     def reminder_sent(self, delta):

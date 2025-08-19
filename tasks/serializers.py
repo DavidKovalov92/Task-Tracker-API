@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import Team, Task, TaskChangeLog
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -28,6 +31,13 @@ class TeamSerializer(serializers.ModelSerializer):
         model = Team
         fields = ['id', 'title', 'description', 'created_at', 'is_active', 'members', 'creator', 'tasks']
         read_only_fields = ['id']
+
+class UserSerializer(serializers.ModelSerializer):
+    teams = TeamSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'role', 'teams']
 
 
 class TaskChangeLogSerializer(serializers.ModelSerializer):

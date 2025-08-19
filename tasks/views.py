@@ -2,9 +2,11 @@ from celery import Task
 from rest_framework.viewsets import ModelViewSet
 from .email import generate_task_email
 from users.permissions import IsAdminOrManager, RoleHelper
-from .serializers import TeamSerializer, TaskSerializer, TaskChangeLogSerializer
+from .serializers import TeamSerializer, TaskSerializer, TaskChangeLogSerializer, UserSerializer
 from .models import Team, Task
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
+from users.permissions import RoleHelper
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .helpers import task_change_log, log_notification
@@ -18,10 +20,28 @@ from .filters import TaskFilter, TeamFilter
 from .tasks import invalidate_task_cache, send_email_task, export_tasks_s3
 from .cache import make_cache_key, cache_get, cache_set
 from celery.result import AsyncResult
-from users.throttling import UserRateThrottle
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from users.throttling import UserRateThrottle, UsersThrottle
 
 
 User = get_user_model()
+
+
+class GetUserViewSet(ReadOnlyModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [UsersThrottle]
+
+    def get_queryset(self):
+        user = self.request.user
+        if RoleHelper.is_admin(user):
+            return User.objects.all()
+        elif RoleHelper.is_manager(user):
+            return User.objects.filter(teams__members=user).distinct()
+        else:
+            raise PermissionDenied("you do not have sufficient privileges")
 
 
 class TeamViewSet(ModelViewSet):
